@@ -1,0 +1,24 @@
+{
+	"name": "My Vite extension",
+	"description": "Base Level Extension",
+	"version": "1.0",
+	"manifest_version": 3,
+	"author": "tomasgilamoedo@gmail.com",
+	"action": {
+		"default_popup": "index.html",
+		"default_icon": "hello_extensions.png"
+	},
+
+	"background": {
+		"service_worker": "service-worker.js",
+		"type": "module"
+	},
+
+	"permissions": ["scripting", "tabs", "activeTab", "background", "storage"],
+	"content_scripts": [
+		{
+			"matches": ["http://*/*", "https://*/*", "<all_urls>"],
+			"js": ["contentScript.js"]
+		}
+	]
+}
