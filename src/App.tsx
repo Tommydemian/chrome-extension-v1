@@ -97,8 +97,11 @@ function App() {
 			</button>
 			<ul className="list-none text-left space-y-1">
 				{Object.entries(times).map(([domain, time]) => (
-					<li className="flex" key={domain}>
+					<li className="flex items-center" key={domain}>
 						<span className="font-semibold">{domain}: </span>
+						<span className="italic ml-1 rounded-sm bg-red-700 px-0.5 !py-0 flex justify-center items-center">
+							billable
+						</span>
 						<span className="ml-auto">{formatTime(time)}</span>
 					</li>
 				))}

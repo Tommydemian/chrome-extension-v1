@@ -109,14 +109,18 @@ chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
 		return true;
 	}
 });
-chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
-	if (req.action === "SWITCH_THEME") {
-		sendResponse({
-			status: "OK",
-			domainTimes, // the existing totals
-			activeDomain, // current domain in memory
-			startTime, // current domain’s start time
-		});
-		return true;
+
+// IDLE
+// Set idle detection to 60 seconds
+chrome.idle.setDetectionInterval(60);
+
+// Listen for idle state changes
+chrome.idle.onStateChanged.addListener((newState) => {
+	if (newState === "idle") {
+		console.log("User is idle – pause tracking if needed.");
+	} else if (newState === "active") {
+		console.log("User is active – resume tracking.");
+	} else if (newState === "locked") {
+		console.log("System is locked – definitely pause tracking.");
 	}
 });
