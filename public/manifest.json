@@ -14,7 +14,7 @@
 		"type": "module"
 	},
 
-	"permissions": ["scripting", "tabs", "activeTab", "background", "storage"],
+	"permissions": ["tabs", "activeTab", "background", "storage", "idle"],
 	"content_scripts": [
 		{
 			"matches": ["http://*/*", "https://*/*", "<all_urls>"],

@@ -67,7 +67,7 @@ function resetDomainTimes() {
 	activeDomain = null;
 	startTime = null;
 
-	chrome.storage.local.set({ domainTimes: {}, firstSet: false }, () => {
+	chrome.storage.local.set({ domainTimes: {} }, () => {
 		console.log("Reset domainTimes and firstSet in storage.");
 	});
 }
@@ -100,6 +100,17 @@ chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
 // background.js
 chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
 	if (req.action === "GET_ACTIVE_INFO") {
+		sendResponse({
+			status: "OK",
+			domainTimes, // the existing totals
+			activeDomain, // current domain in memory
+			startTime, // current domain’s start time
+		});
+		return true;
+	}
+});
+chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
+	if (req.action === "SWITCH_THEME") {
 		sendResponse({
 			status: "OK",
 			domainTimes, // the existing totals

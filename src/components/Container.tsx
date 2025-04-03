@@ -8,7 +8,7 @@ type ContainerProps = {
 
 export const Container: FC<ContainerProps> = ({ children, className }) => {
 	return (
-		<div className={cn("max-w-7xl mx-auto box-content px-1", className)}>
+		<div className={cn("max-w-7xl mx-auto box-content px-4", className)}>
 			{children}
 		</div>
 	);
