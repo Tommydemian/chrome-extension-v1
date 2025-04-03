@@ -1,60 +1,62 @@
-import { type ChangeEvent, type FormEvent, useState } from "react";
+import { useEffect, useState } from "react";
 import { Container } from "./components/Container";
-// import { handleCon } from "./contentScipt";
+import { formatTime } from "./utils/formatTime";
 import "./App.css";
 
 function App() {
-	const [word, setWord] = useState<string>("");
-	// const [time, setTimes] = useState<Record<string, number>>({});
+	const [times, setTimes] = useState<Record<string, number>>({});
 
-	// useEffect(() => {
-	// 	chrome.runtime.sendMessage({ type: "GET_TIME" }, (res) => {
-	// 		console.log(res.timeSpent, "res");
-	// 		setTimes(res);
-	// 	});
-	// }, []);
+	useEffect(() => {
+		const tick = () => {
+			chrome.runtime.sendMessage({ action: "GET_ACTIVE_INFO" }, (res) => {
+				if (res.status === "OK") {
+					const { domainTimes, activeDomain, startTime } = res;
+					const displayTimes = { ...domainTimes };
 
-	const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-		setWord(e.target.value);
-	};
+					// If there's an active domain, add the "current session" time
+					if (activeDomain && startTime) {
+						const msSoFar = Date.now() - startTime;
+						displayTimes[activeDomain] =
+							(displayTimes[activeDomain] ?? 0) + msSoFar;
+					}
 
-	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-
-		// query the current active tab
-		const [tab] = await chrome.tabs.query({
-			active: true,
-			currentWindow: true,
-		});
-
-		if (tab.id) {
-			// send message to the content script
-			chrome.tabs.sendMessage(tab.id, {
-				type: "FIND_WORD",
-				payload: word,
+					setTimes(displayTimes);
+				}
 			});
-		}
+		};
+
+		// Call it once immediately
+		tick();
+
+		// Then every second while the popup is open
+		const intervalId = setInterval(tick, 1000);
+		return () => clearInterval(intervalId);
+	}, []);
+
+	useEffect(() => {
+		console.log(times);
+	}, [times]);
+
+	const handleResetTime = () => {
+		chrome.runtime.sendMessage({ action: "RESET_TIME_SPENT" }, (res) => {
+			console.log(`state reset: ${res}`);
+		});
 	};
 
 	return (
 		<Container className="space-y-4">
-			<p>Find word</p>
-			<form onSubmit={handleSubmit}>
-				<label htmlFor="word">
-					<input
-						type="text"
-						id="word"
-						name="word"
-						value={word}
-						onChange={handleChange}
-						className="border border-gray-50 py-0.5 rounded-md"
-					/>
-				</label>
-				<button className="mt-4" type="submit">
-					Submit
-				</button>
-			</form>
-			<button type="button">handleCon</button>
+			<h1 className="text-lg">Time tracker</h1>
+			<button onClick={handleResetTime} type="button">
+				Reset Time
+			</button>
+			<ul className="list-none text-left space-y-1">
+				{Object.entries(times).map(([domain, time]) => (
+					<li className="flex" key={domain}>
+						<span className="font-semibold">{domain}: </span>
+						<span className="ml-auto">{formatTime(time)}</span>
+					</li>
+				))}
+			</ul>
 		</Container>
 	);
 }

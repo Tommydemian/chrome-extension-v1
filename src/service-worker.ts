@@ -1,92 +1,111 @@
-type TimeRecord = {
-	timeStart: number;
-	timeEnd: number;
-	totalTime: string;
-	id: number;
-	url: string;
-	active: boolean;
-};
+let activeTabId: number | null | undefined = null;
+let domainTimes: Record<string, number> = {};
+let activeDomain: string | null | undefined = null;
+let startTime: number | null = null;
 
-// utils
-function formatTimeDiff(startMs: number, endMs: number) {
-	const diffMs = endMs - startMs;
-	const totalSeconds = Math.floor(diffMs / 1000);
-
-	// Extract hours and minutes
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-	return { hours, minutes };
+/**
+ * Safely extracts the domain (hostname) from a URL string.
+ */
+function getDomain(url: string | undefined | null) {
+	if (!url) return;
+	try {
+		const { hostname } = new URL(url);
+		return hostname;
+	} catch (error) {
+		console.error(error);
+		return null;
+	}
 }
 
-const currentTab: TimeRecord = {
-	active: false,
-	id: 0,
-	timeEnd: 0,
-	timeStart: 0,
-	totalTime: "",
-	url: "",
-};
+function updateTimes() {
+	if (!activeDomain || !startTime) return;
 
-let timeSpent: TimeRecord[] = [];
+	const currentTime = Date.now();
+	const oldValue = domainTimes[activeDomain] ?? 0;
+	const newValue = oldValue + (currentTime - startTime);
 
-chrome.storage.local.get(["timeSpent"], (result) => {
-	timeSpent = result.timeSpent || [];
+	domainTimes[activeDomain] = newValue;
+	startTime = currentTime;
+
+	chrome.storage.local.set({ domainTimes });
+}
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+	chrome.tabs.get(tabId, (tab) => {
+		updateTimes();
+		activeTabId = tab.id;
+		activeDomain = getDomain(tab?.url);
+		startTime = Date.now();
+	});
 });
-
-chrome.tabs.query({ active: true, currentWindow: true }, (tabsList) => {
-	if (tabsList.length > 0) {
-		const startingAt = Date.now();
-		currentTab.timeStart = startingAt;
-		// extract active tab
-		const [tab] = tabsList;
-
-		chrome.storage.local
-			.get(["firstSet"])
-			.then((res) => res.firstSet || false)
-			.then((didRun) => {
-				if (!didRun) {
-					timeSpent.push({
-						active: currentTab.active,
-						id: tab.id ?? 0,
-						timeStart: startingAt,
-						timeEnd: 0,
-						totalTime: "",
-						url: tab.url ? new URL(tab.url).hostname : "",
-					});
-					// SET time spent
-					chrome.storage.local.set({ timeSpent }, () => {
-						console.log("Updated timeSpent in storage:", timeSpent);
-					});
-					// SET first set
-					chrome.storage.local.set({ firstSet: true });
-				}
-			})
-			.catch((e) => console.error(e));
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+	if (changeInfo.status === "complete") {
+		// change domain in the same TAB
+		if (tabId === activeTabId) {
+			updateTimes();
+			activeDomain = getDomain(tab?.url);
+			startTime = Date.now();
+		}
+	}
+});
+chrome.tabs.onRemoved.addListener((tabId) => {
+	if (tabId === activeTabId) {
+		updateTimes();
+		activeTabId = null;
+		activeDomain = null;
+		startTime = null;
 	}
 });
 
-chrome.tabs.onActivated.addListener((activeInfo) => {
-	const biTime = Date.now();
-	currentTab.timeEnd = biTime;
-	const { hours, minutes } = formatTimeDiff(currentTab.timeStart, biTime);
-	currentTab.totalTime = `${hours} hours and ${minutes} minutes`;
-	console.log(`Elapsed: ${hours} hours and ${minutes} minutes`);
+/**
+ * Resets domain tracking data in memory and in chrome.storage.
+ * Also clears "firstSet" or any other relevant flags if you want.
+ */
+function resetDomainTimes() {
+	domainTimes = {};
+	activeTabId = null;
+	activeDomain = null;
+	startTime = null;
 
-	console.log(activeInfo.tabId, "firing");
-	// every time a tab switches
-	chrome.tabs.get(activeInfo.tabId, (tab) => {
-		console.log(tab);
-		timeSpent.push({
-			active: tab.active,
-			id: tab.id ?? 0,
-			timeStart: biTime,
-			timeEnd: 0,
-			totalTime: "",
-			url: tab.url ? new URL(tab.url).hostname : "",
-		});
-		chrome.storage.local.set({ timeSpent }, () => {
-			console.log("Updated timeSpent in storage:", timeSpent);
-		});
+	chrome.storage.local.set({ domainTimes: {}, firstSet: false }, () => {
+		console.log("Reset domainTimes and firstSet in storage.");
 	});
+}
+
+/**
+ * Message listener for popup or content scripts.
+ * Example actions:
+ *   - RESET_TIME_SPENT: calls resetDomainTimes()
+ *   - GET_TIME_SPENT: retrieves domainTimes from storage
+ */
+chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
+	if (request.action === "RESET_TIME_SPENT") {
+		resetDomainTimes();
+		sendResponse({ status: "OK", message: "Domain times reset" });
+		return;
+	}
+
+	if (request.action === "GET_TIME_SPENT") {
+		chrome.storage.local.get(["domainTimes"], (result) => {
+			sendResponse({
+				status: "OK",
+				data: result.domainTimes || {}, // Return an object of domain -> total ms
+			});
+		});
+		// Must return true to indicate we are responding asynchronously
+		return true;
+	}
+});
+
+// background.js
+chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
+	if (req.action === "GET_ACTIVE_INFO") {
+		sendResponse({
+			status: "OK",
+			domainTimes, // the existing totals
+			activeDomain, // current domain in memory
+			startTime, // current domain’s start time
+		});
+		return true;
+	}
 });
