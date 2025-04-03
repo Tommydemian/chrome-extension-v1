@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Container } from "./components/Container";
 import { formatTime } from "./utils/formatTime";
+import { MoonIcon, SunIcon } from "lucide-react";
 import "./App.css";
 
 function App() {
