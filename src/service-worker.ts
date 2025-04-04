@@ -124,7 +124,7 @@ chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
 
 // IDLE
 // 1) Set idle threshold to 1 minute
-chrome.idle.setDetectionInterval(60);
+chrome.idle.setDetectionInterval(20);
 
 // 2) Listen for idle changes
 chrome.idle.onStateChanged.addListener((newState) => {
@@ -133,6 +133,8 @@ chrome.idle.onStateChanged.addListener((newState) => {
 		updateTimes();
 		activeDomain = null;
 		startTime = null;
+
+		chrome.runtime.sendMessage({ type: "IDLE_STATE_CHANGED", newState });
 	} else if (newState === "active") {
 		console.log("User is active again.");
 		// Resume tracking for the active tab
@@ -143,6 +145,7 @@ chrome.idle.onStateChanged.addListener((newState) => {
 				startTime = Date.now();
 			}
 		});
+		chrome.runtime.sendMessage({ type: "IDLE_STATE_CHANGED", newState });
 	}
 });
 
