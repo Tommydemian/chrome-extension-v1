@@ -7,7 +7,8 @@ import "./App.css";
 import { Heading } from "./components/Heading";
 import { Tabs } from "./components/Tabs";
 import type { DomainTime } from "./types";
-import { resetTime } from "./utils/resetTime";
+// import { resetTime } from "./utils/resetTime";
+import { Footer } from "./components/Footer";
 
 import { CustomCheckbox } from "./components/CustomCheckbox";
 
@@ -82,7 +83,7 @@ function App() {
 	}, []);
 
 	return (
-		<Container className="pb-4">
+		<>
 			<Heading
 				headingTitle="Time Tracker"
 				headingSubtitle="Tracking your valuable time"
@@ -100,32 +101,33 @@ function App() {
 				</button> */}
 			</Heading>
 			<Tabs />
-			<div className="flex justify-between items-center py-2">
-				<div className="flex flex-col items-start">
-					<h4 className="text-d-secondary">Total Time</h4>
-					<p className="text-d-body text-base font-bold">
-						{formatTime(totalTime)}
-					</p>
+			<Container className="pb-4">
+				<div className="flex justify-between items-center py-2">
+					<div className="flex flex-col items-start">
+						<h4 className="text-d-secondary">Total Time</h4>
+						<p className="text-d-body text-base font-bold">
+							{formatTime(totalTime)}
+						</p>
+					</div>
+					<div className="flex flex-col items-start">
+						<h4 className="text-d-secondary">Billable</h4>
+						<p className="text-accent text-base font-bold filter-shadow">
+							{formatTime(billableTime)}
+						</p>
+					</div>
 				</div>
-				<div className="flex flex-col items-start">
-					<h4 className="text-d-secondary">Billable</h4>
-					<p className="text-accent text-base font-bold filter-shadow">
-						{formatTime(billableTime)}
-					</p>
-				</div>
-			</div>
-			<ul className="list-none text-left space-y-2">
-				{Object.entries(times).map(([domain, val]) => (
-					<li
-						className="flex items-center border border-[#ffffff0d] cursor-pointer rounded-md py-[0.25em] px-[0.5em]"
-						key={domain}
-					>
-						<CustomCheckbox
-							checked={val.billable}
-							onChange={handleBillableToggle}
-							domain={domain}
-						/>
-						{/* <input
+				<ul className="list-none text-left space-y-2">
+					{Object.entries(times).map(([domain, val]) => (
+						<li
+							className="flex items-center border border-[#ffffff0d] cursor-pointer rounded-md py-[0.25em] px-[0.5em]"
+							key={domain}
+						>
+							<CustomCheckbox
+								checked={val.billable}
+								onChange={handleBillableToggle}
+								domain={domain}
+							/>
+							{/* <input
 							className="mr-2"
 							type="checkbox"
 							name="billable"
@@ -133,15 +135,17 @@ function App() {
 							checked={val.billable}
 							onChange={() => handleBillableToggle(domain)}
 						/> */}
-						<span className="font-semibold">{domain} </span>
-						<span className="ml-auto">{formatTime(val.time)}</span>
-					</li>
-				))}
-			</ul>
-			<button type="button" onClick={resetTime}>
-				reset
-			</button>
-		</Container>
+							<span className="font-semibold">{domain} </span>
+							<span className="ml-auto">{formatTime(val.time)}</span>
+						</li>
+					))}
+				</ul>
+			</Container>
+			<Footer>
+				<div className="w-2 h-2 rounded-full bg-accent mr-1 animate-pulse" />
+				<p>Tracking: 1h 20m on current domain</p>
+			</Footer>
+		</>
 	);
 }
 

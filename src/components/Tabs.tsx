@@ -1,4 +1,5 @@
 import { useCallback, useState, type FC } from "react";
+import { Container } from "./Container";
 import { cn } from "../utils/cn";
 
 type Tabs = "today" | "weekly" | "invoice";
@@ -21,22 +22,24 @@ export const Tabs: FC = () => {
 	}, []);
 
 	return (
-		<div className="flex py-4 justify-between items-center border-b border-[#ffffff0d]">
-			{tabs.map((tab) => (
-				<button
-					onClick={() => handleActiveState(tab.id)}
-					type="button"
-					key={tab.id}
-					className={cn(
-						"capitalize font-semibold text-base transition-all duration-200",
-						tab.id === activeTabId
-							? "text-d-body bg-anchor-glass-bg"
-							: "text-d-secondary",
-					)}
-				>
-					{tab.tabLabel}
-				</button>
-			))}
+		<div className="py-4 border-b border-border-200">
+			<Container className="flex justify-between items-center">
+				{tabs.map((tab) => (
+					<button
+						onClick={() => handleActiveState(tab.id)}
+						type="button"
+						key={tab.id}
+						className={cn(
+							"capitalize font-semibold text-base transition-all duration-200",
+							tab.id === activeTabId
+								? "text-d-body bg-anchor-glass-bg"
+								: "text-d-secondary",
+						)}
+					>
+						{tab.tabLabel}
+					</button>
+				))}
+			</Container>
 		</div>
 	);
 };
