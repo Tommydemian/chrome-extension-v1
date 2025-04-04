@@ -1,7 +1,16 @@
+import type { DomainTime } from "./types";
+
 let activeTabId: number | null | undefined = null;
-let domainTimes: Record<string, number> = {};
+let domainTimes: Record<string, DomainTime> = {};
 let activeDomain: string | null | undefined = null;
 let startTime: number | null = null;
+
+chrome.storage.local.get(["domainTimes"], (res) => {
+	if (res.domainTimes) {
+		domainTimes = res.domainTimes;
+		console.log("Reinitialized domainTimes from storage:", domainTimes);
+	}
+});
 
 /**
  * Safely extracts the domain (hostname) from a URL string.
@@ -21,8 +30,11 @@ function updateTimes() {
 	if (!activeDomain || !startTime) return;
 
 	const currentTime = Date.now();
-	const oldValue = domainTimes[activeDomain] ?? 0;
-	const newValue = oldValue + (currentTime - startTime);
+	const oldValue = domainTimes[activeDomain] ?? { time: 0, billable: false };
+	const newValue = {
+		time: oldValue.time + (currentTime - startTime),
+		billable: oldValue.billable,
+	};
 
 	domainTimes[activeDomain] = newValue;
 	startTime = currentTime;
@@ -111,16 +123,39 @@ chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
 });
 
 // IDLE
-// Set idle detection to 60 seconds
+// 1) Set idle threshold to 1 minute
 chrome.idle.setDetectionInterval(60);
 
-// Listen for idle state changes
+// 2) Listen for idle changes
 chrome.idle.onStateChanged.addListener((newState) => {
-	if (newState === "idle") {
-		console.log("User is idle – pause tracking if needed.");
+	if (newState === "idle" || newState === "locked") {
+		console.log(`User is ${newState}, finalize current domain.`);
+		updateTimes();
+		activeDomain = null;
+		startTime = null;
 	} else if (newState === "active") {
-		console.log("User is active – resume tracking.");
-	} else if (newState === "locked") {
-		console.log("System is locked – definitely pause tracking.");
+		console.log("User is active again.");
+		// Resume tracking for the active tab
+		chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+			if (tabs.length > 0) {
+				const [tab] = tabs;
+				activeDomain = getDomain(tab?.url);
+				startTime = Date.now();
+			}
+		});
+	}
+});
+
+chrome.runtime.onMessage.addListener((req, _, sendResponse) => {
+	if (req.action === "UPDATE_BILLABLE") {
+		// For safety, check if domainTimes[req.domain] exists:
+		if (!domainTimes[req.domain]) {
+			domainTimes[req.domain] = { time: 0, billable: req.newValue };
+		} else {
+			domainTimes[req.domain].billable = req.newValue;
+		}
+		chrome.storage.local.set({ domainTimes });
+		sendResponse({ status: "OK" });
+		return true;
 	}
 });
